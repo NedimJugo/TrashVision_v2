@@ -1,0 +1,1479 @@
+<!DOCTYPE html>
+<html lang="bs" data-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TrashVision Pro - AI Klasifikacija Otpada</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #10b981;
+            --secondary: #059669;
+            --accent: #3b82f6;
+            --bg-main: #f0fdf4;
+            --bg-card: #ffffff;
+            --text-primary: #1f2937;
+            --text-secondary: #6b7280;
+            --border: #d1fae5;
+            --shadow: rgba(0, 0, 0, 0.1);
+        }
+
+        [data-theme="dark"] {
+            --primary: #10b981;
+            --secondary: #059669;
+            --accent: #60a5fa;
+            --bg-main: #0f172a;
+            --bg-card: #1e293b;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --border: #1e4639;
+            --shadow: rgba(0, 0, 0, 0.3);
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--bg-main);
+            color: var(--text-primary);
+            transition: all 0.3s ease;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Header */
+        .header {
+            background: var(--bg-card);
+            border-radius: 16px;
+            padding: 20px 30px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 8px var(--shadow);
+            border: 1px solid var(--border);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo-icon {
+            font-size: 2rem;
+        }
+
+        .logo-text h1 {
+            font-size: 1.5rem;
+            color: var(--text-primary);
+            font-weight: 700;
+        }
+
+        .logo-text p {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .theme-toggle {
+            background: var(--primary);
+            border: none;
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            color: white;
+            cursor: pointer;
+            font-size: 1.5rem;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .theme-toggle:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px var(--shadow);
+        }
+
+        .stats-mini {
+            display: flex;
+            gap: 20px;
+            padding: 0 20px;
+            border-left: 2px solid var(--border);
+        }
+
+        .stat-mini {
+            text-align: center;
+        }
+
+        .stat-mini-value {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .stat-mini-label {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        /* Main Grid */
+        .main-content {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 20px;
+            overflow-y: auto;
+            min-height: 0;
+        }
+
+        .card {
+            background: var(--bg-card);
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 2px 8px var(--shadow);
+            border: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .card-title {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* Media Zone - sa slikom unutra */
+        .media-zone {
+            position: relative;
+            border: 2px dashed var(--primary);
+            border-radius: 12px;
+            min-height: 400px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: var(--bg-main);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .media-zone:hover {
+            border-color: var(--secondary);
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.1) 100%);
+        }
+
+        .media-zone img,
+        .media-zone video {
+            max-width: 100%;
+            max-height: 400px;
+            object-fit: contain;
+            border-radius: 10px;
+        }
+
+        .upload-placeholder {
+            padding: 40px;
+        }
+
+        .upload-icon {
+            font-size: 4rem;
+            margin-bottom: 12px;
+        }
+
+        .upload-text {
+            font-size: 1rem;
+            color: var(--text-primary);
+            margin-bottom: 16px;
+        }
+
+        .upload-buttons {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 10px 24px;
+            border: none;
+            border-radius: 10px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: var(--primary);
+            border: 2px solid var(--primary);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px var(--shadow);
+        }
+
+        .btn-small {
+            padding: 6px 16px;
+            font-size: 0.85rem;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Results */
+        .results-container {
+            display: none;
+            margin-top: 20px;
+        }
+
+        .result-main {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 24px;
+            border-radius: 12px;
+            margin-bottom: 16px;
+        }
+
+        .result-class {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .result-confidence {
+            font-size: 3rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .result-badges {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+            flex-wrap: wrap;
+        }
+
+        .badge {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            background: rgba(255, 255, 255, 0.2);
+            cursor: pointer;
+        }
+
+        .badge:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        /* Info sections */
+        .info-section {
+            background: var(--bg-main);
+            border-radius: 12px;
+            margin-bottom: 12px;
+            overflow: hidden;
+        }
+
+        .info-header {
+            padding: 16px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s ease;
+        }
+
+        .info-header:hover {
+            background: var(--border);
+        }
+
+        .info-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+            padding: 0 16px;
+        }
+
+        .info-content.expanded {
+            max-height: 500px;
+            padding: 0 16px 16px;
+        }
+
+        .info-item {
+            padding: 12px;
+            background: var(--bg-card);
+            border-radius: 8px;
+            margin-bottom: 8px;
+            border-left: 4px solid var(--primary);
+        }
+
+        /* Sidebar */
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            overflow-y: auto;
+            min-height: 0;
+        }
+
+        /* History */
+        .history-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .history-item {
+            position: relative;
+            border-radius: 8px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: all 0.3s;
+            aspect-ratio: 1;
+        }
+
+        .history-item:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px var(--shadow);
+        }
+
+        .history-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .history-label {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(to top, rgba(0, 0, 0, 0.8), transparent);
+            color: white;
+            padding: 8px 4px;
+            font-size: 0.7rem;
+            text-align: center;
+        }
+
+        /* Loading */
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 40px;
+        }
+
+        .spinner {
+            border: 4px solid var(--border);
+            border-top: 4px solid var(--primary);
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 16px;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .modal-content {
+            background: var(--bg-card);
+            border-radius: 16px;
+            padding: 30px;
+            max-width: 600px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        /* Live indicator */
+        .live-indicator {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: #ef4444;
+            color: white;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 0.9rem;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        /* Category selector */
+        .category-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .category-option {
+            padding: 15px 10px;
+            background: var(--bg-main);
+            border: 2px solid transparent;
+            border-radius: 10px;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.3s;
+        }
+
+        .category-option:hover {
+            background: var(--border);
+        }
+
+        .category-option.selected {
+            border-color: var(--primary);
+            background: rgba(16, 185, 129, 0.1);
+        }
+
+        .category-emoji {
+            font-size: 2rem;
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-main);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--primary);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--secondary);
+        }
+
+        /* Toast notification */
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            padding: 15px 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            z-index: 10000;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+
+            .stats-mini {
+                display: none;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .header {
+                flex-direction: column;
+                gap: 16px;
+            }
+
+            .history-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .category-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        #fileInput {
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div class="logo">
+                <div class="logo-icon">♻️</div>
+                <div class="logo-text">
+                    <h1>TrashVision Pro</h1>
+                    <p>AI Klasifikacija Otpada</p>
+                </div>
+            </div>
+
+            <div class="header-actions">
+                <div class="stats-mini">
+                    <div class="stat-mini">
+                        <div class="stat-mini-value" id="headerTotal">0</div>
+                        <div class="stat-mini-label">Skenova</div>
+                    </div>
+                    <div class="stat-mini">
+                        <div class="stat-mini-value" id="headerRecyclable">0</div>
+                        <div class="stat-mini-label">Reciklirano</div>
+                    </div>
+                    <div class="stat-mini">
+                        <div class="stat-mini-value" id="headerCO2">0kg</div>
+                        <div class="stat-mini-label">CO₂ Sačuvano</div>
+                    </div>
+                </div>
+                <button class="theme-toggle" onclick="toggleTheme()" id="themeToggle">🌙</button>
+                <button class="btn btn-small btn-secondary" onclick="showAnalytics()">
+                    📊 Analitika
+                </button>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Left Column -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">📸 Analiziraj Otpad</div>
+                    <div class="upload-buttons">
+                        <button class="btn btn-small btn-primary" onclick="document.getElementById('fileInput').click()">
+                            📁 Fajl
+                        </button>
+                        <button class="btn btn-small btn-secondary" onclick="document.getElementById('fileInput').setAttribute('multiple', 'true'); document.getElementById('fileInput').click();">
+                            📦 Batch
+                        </button>
+                        <button class="btn btn-small btn-secondary" onclick="startLiveCamera()">
+                            📹 Live
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Media Zone -->
+                <div class="media-zone" id="mediaZone" onclick="document.getElementById('fileInput').click()">
+                    <div class="upload-placeholder" id="uploadPlaceholder">
+                        <div class="upload-icon">🗑️</div>
+                        <div class="upload-text">Klikni ili prevuci sliku ovdje</div>
+                        <p style="color: var(--text-secondary); font-size: 0.9rem;">Automatska klasifikacija</p>
+                    </div>
+                    <img id="mediaImage" style="display: none;">
+                    <video id="mediaVideo" autoplay playsinline style="display: none;"></video>
+                    <div class="live-indicator" id="liveIndicator" style="display: none;">🔴 UŽIVO</div>
+                </div>
+
+                <input type="file" id="fileInput" accept="image/*">
+
+                <div style="text-align: center; margin-top: 15px; display: none;" id="cameraControls">
+                    <button class="btn btn-primary" onclick="stopLiveCamera()">⏹️ Zaustavi Kameru</button>
+                </div>
+
+                <!-- Results - dinamički se popunjava -->
+                <div class="results-container" id="resultsContainer">
+                    <!-- Rezultati će biti dodani ovdje dinamički -->
+                </div>
+            </div>
+
+            <!-- Right Column (Sidebar) -->
+            <div class="sidebar">
+                <!-- History -->
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">🖼️ Historija</div>
+                        <button class="btn btn-small btn-secondary" onclick="clearHistory()">🗑️</button>
+                    </div>
+                    <div class="history-grid" id="historyGrid">
+                        <p style="color: var(--text-secondary); text-align: center; grid-column: 1/-1;">Nema historije</p>
+                    </div>
+                </div>
+
+                <!-- Fun Fact -->
+                <div class="card"
+                    style="background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%); color: white;">
+                    <div style="font-weight: 600; margin-bottom: 10px;">💡 Da Li Znate?</div>
+                    <p id="funFact" style="font-size: 0.95rem; line-height: 1.6;"></p>
+                </div>
+
+                <!-- Learning Progress -->
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">🎓 Kontinuirano Učenje</div>
+                    </div>
+                    <div id="learningInfo">
+                        <div class="loading">
+                            <div class="spinner"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:8000';
+
+        let currentFile = null;
+        let currentResult = null;
+        let stream = null;
+        let liveInterval = null;
+        let classificationHistory = [];
+        let stats = { total: 0, recyclable: 0, co2: 0 };
+
+        const WASTE_INFO = {
+            battery: {
+                name: 'Baterija',
+                bin: 'Crveni kontejner za opasan otpad',
+                instructions: 'Nikad ne bacaj baterije u obični otpad! Sadrže toksične materijale.',
+                degradation: '100-1000 godina',
+                impact: 'Izuzetno štetne - sadrže teške metale koji zagađuju zemljište i podzemne vode.',
+                recycling: 'Baterije se mogu reciklirati do 98%. Metali se ekstrahuju i ponovo koriste.'
+            },
+            biological: {
+                name: 'Organski otpad',
+                bin: 'Braon/zelena kanta',
+                instructions: 'Idealno za kompostiranje. Ne miješaj sa plastikom ili staklom.',
+                degradation: '2 sedmice - 1 godina',
+                impact: 'Prirodno se razgrađuje i postaje dio prirodnog ciklusa.',
+                recycling: 'Pretvara se u kompost koji obogaćuje zemljište.'
+            },
+            cardboard: {
+                name: 'Karton',
+                bin: 'Plavi kontejner',
+                instructions: 'Uvijek spljoštite kartonske kutije prije bacanja.',
+                degradation: '2-3 mjeseca',
+                impact: 'Lako razgradiv materijal. Recikliranje štedi stabla i smanjuje CO₂.',
+                recycling: 'Može se reciklirati 5-7 puta. Jedna tona spašava 17 stabala.'
+            },
+            clothes: {
+                name: 'Odjeća',
+                bin: 'Kontejner za tekstil',
+                instructions: 'Očisti odjeću prije doniranja. Oštećenu odjeću odnesi u reciklažu.',
+                degradation: '1-40 godina',
+                impact: 'Tekstilna industrija je među najvećim zagađivačima.',
+                recycling: 'Može se reciklirati u nova vlakna ili izolaciju.'
+            },
+            glass: {
+                name: 'Staklo',
+                bin: 'Zeleni kontejner',
+                instructions: 'Isperi boce prije bacanja. Odvoji poklopce.',
+                degradation: '1 milion godina+',
+                impact: 'Ne razgrađuje se prirodno, ali je 100% reciklabilno.',
+                recycling: 'Staklo se može reciklirati beskonačno bez gubitka kvaliteta.'
+            },
+            metal: {
+                name: 'Metal',
+                bin: 'Žuti kontejner',
+                instructions: 'Isperi konzerve. Aluminijske limenke lako recikliraj.',
+                degradation: '50-500 godina',
+                impact: 'Teški metali zagađuju zemljište i vodu.',
+                recycling: 'Aluminijum se reciklira beskonačno. Štedi 95% energije.'
+            },
+            paper: {
+                name: 'Papir',
+                bin: 'Plavi kontejner',
+                instructions: 'Ukloni plastične dijelove. Mokri papir nije dobar za reciklažu.',
+                degradation: '2-6 sedmica',
+                impact: 'Reciklaža papira smanjuje sječu šuma.',
+                recycling: 'Može se reciklirati 5-7 puta. Štedi 17 stabala i 26,000L vode.'
+            },
+            plastic: {
+                name: 'Plastika',
+                bin: 'Žuti kontejner',
+                instructions: 'Isperi boce. Spljoštite da uštedite prostor.',
+                degradation: '450-1000 godina',
+                impact: 'Mikroplastika zagađuje oceane i ulazi u lanac ishrane.',
+                recycling: 'PET i HDPE se najlakše recikliraju. Štedi 88% energije.'
+            },
+            shoes: {
+                name: 'Cipele',
+                bin: 'Kontejner za tekstil',
+                instructions: 'Doniraj nosive cipele. Oštećene odnesi u reciklažu.',
+                degradation: '25-40 godina',
+                impact: 'Kombinacija materijala otežava reciklažu.',
+                recycling: 'Guma za sportske podloge, koža za novi proizvodi.'
+            },
+            trash: {
+                name: 'Ostali otpad',
+                bin: 'Crna/siva kanta',
+                instructions: 'Samo materijali koji se ne mogu reciklirati.',
+                degradation: 'Zavisi od materijala',
+                impact: 'Završava na deponiji. Najveći negativni uticaj.',
+                recycling: 'Ne može se reciklirati. Fokusiraj se na smanjenje ovog otpada.'
+            }
+        };
+
+        const funFacts = [
+            "💡 Jedna reciklirana aluminijska limenka štedi energiju za 3 sata TV-a!",
+            "🌍 Recikliranjem tone papira spašavamo 17 stabala i 26,000L vode.",
+            "♻️ Plastična boca razgrađuje se 450-1000 godina.",
+            "🔋 95% energije za aluminij može se sačuvati reciklažom.",
+            "🌊 Svake godine 8-12 miliona tona plastike završi u okeanima.",
+            "📱 Samo 20% elektronskog otpada se pravilno reciklira.",
+            "🗑️ Prosječna porodica proizvede 1.5 tone otpada godišnje.",
+            "♻️ Staklo se može reciklirati beskonačno bez gubitka kvaliteta.",
+            "🌱 Kompostiranjem smanjuješ emisije metana do 50%.",
+            "💧 Recikliranje plastike štedi dvostruko više energije nego spaljivanje."
+        ];
+
+        // Theme toggle
+        function toggleTheme() {
+            const theme = document.documentElement.getAttribute('data-theme');
+            const newTheme = theme === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', newTheme);
+            document.getElementById('themeToggle').textContent = newTheme === 'dark' ? '🌙' : '☀️';
+            localStorage.setItem('theme', newTheme);
+        }
+
+        // Load saved theme
+        const savedTheme = localStorage.getItem('theme') || 'dark';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+        document.getElementById('themeToggle').textContent = savedTheme === 'dark' ? '🌙' : '☀️';
+
+        // Toggle info sections
+        function toggleInfo(section) {
+            const content = document.getElementById(`${section}-content`);
+            const arrow = document.getElementById(`${section}-arrow`);
+            content.classList.toggle('expanded');
+            arrow.textContent = content.classList.contains('expanded') ? '▲' : '▼';
+        }
+
+        // File input
+        const fileInput = document.getElementById('fileInput');
+        fileInput.addEventListener('change', (e) => {
+            const files = Array.from(e.target.files);
+
+            // Reset multiple attribute
+            fileInput.removeAttribute('multiple');
+
+            if (files.length === 1) {
+                handleFile(files[0]);
+            } else if (files.length > 1) {
+                handleBatchUpload(files);
+            }
+        });
+
+        // Drag and drop
+        const mediaZone = document.getElementById('mediaZone');
+        mediaZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            mediaZone.style.borderColor = 'var(--secondary)';
+        });
+        mediaZone.addEventListener('dragleave', () => {
+            mediaZone.style.borderColor = 'var(--primary)';
+        });
+        mediaZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            mediaZone.style.borderColor = 'var(--primary)';
+
+            const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+
+            if (files.length === 1) {
+                handleFile(files[0]);
+            } else if (files.length > 1) {
+                handleBatchUpload(files);
+            }
+        });
+
+        // Handle single file - AUTO CLASSIFY
+        async function handleFile(file) {
+            if (!file || !file.type.startsWith('image/')) {
+                showToast('❌ Molim te odaberi sliku!');
+                return;
+            }
+
+            currentFile = file;
+
+            // Show image
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                document.getElementById('uploadPlaceholder').style.display = 'none';
+                document.getElementById('mediaImage').style.display = 'block';
+                document.getElementById('mediaImage').src = e.target.result;
+                document.getElementById('mediaVideo').style.display = 'none';
+                document.getElementById('liveIndicator').style.display = 'none';
+            };
+            reader.readAsDataURL(file);
+
+            // AUTO CLASSIFY
+            await classifyImage(file);
+        }
+
+        // Classify image
+        async function classifyImage(file) {
+            console.log('classifyImage called with:', file.name);
+            
+            const formData = new FormData();
+            formData.append('file', file);
+
+            // Show loading in results
+            const loadingHTML = `
+                <div style="text-align: center; padding: 40px;">
+                    <div class="spinner"></div>
+                    <p style="margin-top: 15px; color: var(--text-secondary);">Analiziram sliku...</p>
+                </div>
+            `;
+            
+            document.getElementById('resultsContainer').innerHTML = loadingHTML;
+            document.getElementById('resultsContainer').style.display = 'block';
+
+            try {
+                console.log('Sending request to:', `${API_URL}/predict`);
+                
+                const response = await fetch(`${API_URL}/predict`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                console.log('Response status:', response.status);
+                
+                const result = await response.json();
+                console.log('Response data:', result);
+
+                if (result.success) {
+                    currentResult = result.predictions[0];
+                    console.log('Current result set to:', currentResult);
+                    
+                    displayResult(result.predictions[0], result.predictions.slice(1));
+                    addToHistory(result.predictions[0], file);
+                    updateStats(result.predictions[0]);
+                } else {
+                    console.error('Classification failed:', result);
+                    document.getElementById('resultsContainer').innerHTML = `
+                        <div class="error-box" style="background: #fee2e2; padding: 20px; border-radius: 10px;">
+                            <strong>❌ Greška</strong>
+                            <p style="margin-top: 10px;">Klasifikacija nije uspjela</p>
+                        </div>
+                    `;
+                    showToast('❌ Klasifikacija nije uspjela');
+                }
+            } catch (error) {
+                console.error('Classify error:', error);
+                document.getElementById('resultsContainer').innerHTML = `
+                    <div class="error-box" style="background: #fee2e2; padding: 20px; border-radius: 10px;">
+                        <strong>❌ Greška</strong>
+                        <p style="margin-top: 10px;">${error.message}</p>
+                    </div>
+                `;
+                showToast('❌ Greška: ' + error.message);
+            }
+        }
+
+        // Display result
+        function displayResult(prediction, alternatives) {
+            console.log('displayResult called with:', prediction);
+            
+            const classKey = prediction.class;
+            const info = WASTE_INFO[classKey];
+
+            if (!info) {
+                console.error('No info found for class:', classKey);
+                showToast('❌ Nepoznata kategorija: ' + classKey);
+                return;
+            }
+
+            console.log('Using info:', info);
+
+            // Kreiraj KOMPLETAN HTML odjednom
+            const resultsHTML = `
+                <div class="result-main">
+                    <div class="result-class">${info.name}</div>
+                    <div class="result-confidence">${(prediction.confidence * 100).toFixed(1)}%</div>
+                    <div class="result-badges">
+                        <span class="badge">${prediction.recyclable ? '♻️ Reciklabilno' : '❌ Nije Reciklabilno'}</span>
+                        <span class="badge">${info.bin}</span>
+                        <span class="badge" onclick="showFeedbackDialog('${classKey}', ${prediction.confidence})">
+                            ✏️ Ispravi
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Disposal Info -->
+                <div class="info-section">
+                    <div class="info-header" onclick="toggleInfo('disposal')">
+                        <div style="font-weight: 600;">🗑️ Gdje Baciti</div>
+                        <span id="disposal-arrow">▼</span>
+                    </div>
+                    <div class="info-content" id="disposal-content">
+                        <div class="info-item">
+                            <strong>Tip Kontejnera:</strong> ${info.bin}
+                        </div>
+                        <div class="info-item">
+                            <strong>Instrukcije:</strong> ${info.instructions}
+                        </div>
+                        <div class="info-item">
+                            <strong>Reciklaža:</strong> ${info.recycling}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Environmental Impact -->
+                <div class="info-section">
+                    <div class="info-header" onclick="toggleInfo('impact')">
+                        <div style="font-weight: 600;">🌍 Uticaj na Okolinu</div>
+                        <span id="impact-arrow">▼</span>
+                    </div>
+                    <div class="info-content" id="impact-content">
+                        <div class="info-item">
+                            <strong>Vrijeme Razgradnje:</strong> ${info.degradation}
+                        </div>
+                        <div class="info-item">
+                            <strong>Ekološki Uticaj:</strong> ${info.impact}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Other Predictions -->
+                <div class="info-section">
+                    <div class="info-header" onclick="toggleInfo('other')">
+                        <div style="font-weight: 600;">📊 Druge Mogućnosti</div>
+                        <span id="other-arrow">▼</span>
+                    </div>
+                    <div class="info-content" id="other-content">
+                        ${alternatives.map(pred => `
+                            <div class="info-item">
+                                <strong>${WASTE_INFO[pred.class]?.name || pred.name}</strong>
+                                <div style="display: flex; justify-content: space-between; margin-top: 4px;">
+                                    <span style="color: var(--text-secondary);">${(pred.confidence * 100).toFixed(1)}%</span>
+                                    <span>${pred.recyclable ? '♻️' : '❌'}</span>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+
+            // Postavi HTML
+            document.getElementById('resultsContainer').innerHTML = resultsHTML;
+            document.getElementById('resultsContainer').style.display = 'block';
+            
+            console.log('Results container displayed');
+            
+            showRandomFact();
+        }
+
+        // Batch upload
+        async function handleBatchUpload(files) {
+            const modal = createModal(`
+                <h2 style="margin-bottom: 20px;">📦 Batch Procesiranje (${files.length} slika)</h2>
+                <div id="batchProgress" style="margin-bottom: 20px;">
+                    <div style="background: var(--bg-main); height: 30px; border-radius: 15px; overflow: hidden;">
+                        <div id="batchProgressBar" style="background: linear-gradient(90deg, var(--primary), var(--secondary)); height: 100%; width: 0%; transition: width 0.3s;"></div>
+                    </div>
+                    <p style="text-align: center; margin-top: 10px; color: var(--text-secondary);">
+                        <span id="batchStatus">0 / ${files.length}</span>
+                    </p>
+                </div>
+                <div id="batchResults" style="max-height: 400px; overflow-y: auto; display: grid; gap: 10px;"></div>
+                <button class="btn btn-secondary" onclick="this.closest('.modal').remove()" style="width: 100%; margin-top: 20px;">
+                    Zatvori
+                </button>
+            `);
+
+            const results = [];
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                const formData = new FormData();
+                formData.append('file', file);
+
+                try {
+                    const response = await fetch(`${API_URL}/predict`, {
+                        method: 'POST',
+                        body: formData
+                    });
+                    const data = await response.json();
+                    results.push({ file: file.name, ...data.predictions[0] });
+
+                    // Update progress
+                    const progress = ((i + 1) / files.length) * 100;
+                    document.getElementById('batchProgressBar').style.width = progress + '%';
+                    document.getElementById('batchStatus').textContent = `${i + 1} / ${files.length}`;
+
+                    // Add result
+                    const resultDiv = document.createElement('div');
+                    resultDiv.className = 'info-item';
+                    resultDiv.innerHTML = `
+                        <strong>${file.name}</strong>
+                        <div style="display: flex; justify-content: space-between; margin-top: 5px;">
+                            <span>${data.predictions[0].name}</span>
+                            <span style="color: var(--primary);">${(data.predictions[0].confidence * 100).toFixed(1)}%</span>
+                        </div>
+                    `;
+                    document.getElementById('batchResults').appendChild(resultDiv);
+
+                } catch (error) {
+                    console.error(`Greška za ${file.name}:`, error);
+                }
+            }
+
+            generateBatchCSV(results);
+        }
+
+        function generateBatchCSV(results) {
+            const csv = [
+                ['Filename', 'Class', 'Confidence', 'Recyclable'],
+                ...results.map(r => [r.file, r.name, r.confidence, r.recyclable])
+            ].map(row => row.join(',')).join('\n');
+
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+
+            const downloadBtn = document.createElement('button');
+            downloadBtn.className = 'btn btn-primary';
+            downloadBtn.textContent = '📥 Preuzmi CSV';
+            downloadBtn.style.width = '100%';
+            downloadBtn.style.marginTop = '10px';
+            downloadBtn.onclick = () => {
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'batch_results.csv';
+                a.click();
+            };
+
+            document.getElementById('batchResults').after(downloadBtn);
+        }
+
+        // Live Camera
+        async function startLiveCamera() {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: 'environment' }
+                });
+
+                document.getElementById('uploadPlaceholder').style.display = 'none';
+                document.getElementById('mediaImage').style.display = 'none';
+                document.getElementById('mediaVideo').style.display = 'block';
+                document.getElementById('mediaVideo').srcObject = stream;
+                document.getElementById('liveIndicator').style.display = 'block';
+                document.getElementById('cameraControls').style.display = 'block';
+
+                // Classify every 3 seconds
+                liveInterval = setInterval(captureLiveFrame, 3000);
+            } catch (error) {
+                showToast('❌ Greška pri pristupu kameri: ' + error.message);
+            }
+        }
+
+        function stopLiveCamera() {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                clearInterval(liveInterval);
+
+                document.getElementById('uploadPlaceholder').style.display = 'block';
+                document.getElementById('mediaVideo').style.display = 'none';
+                document.getElementById('liveIndicator').style.display = 'none';
+                document.getElementById('cameraControls').style.display = 'none';
+                document.getElementById('resultsContainer').style.display = 'none';
+            }
+        }
+
+        async function captureLiveFrame() {
+            const video = document.getElementById('mediaVideo');
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            canvas.getContext('2d').drawImage(video, 0, 0);
+
+            canvas.toBlob(async (blob) => {
+                const file = new File([blob], 'live-frame.jpg', { type: 'image/jpeg' });
+                currentFile = file;
+                await classifyImage(file);
+            }, 'image/jpeg');
+        }
+
+        // Feedback
+        function showFeedbackDialog(predictedClass, confidence) {
+            const categories = Object.keys(WASTE_INFO);
+
+            const modalHTML = `
+                <h2 style="margin-bottom: 20px;">✏️ Ispravi Predikciju</h2>
+                <p style="color: var(--text-secondary); margin-bottom: 20px;">
+                    Model je predvidio: <strong>${WASTE_INFO[predictedClass].name}</strong><br>
+                    Ako nije tačno, izaberi ispravnu kategoriju:
+                </p>
+                <div class="category-grid">
+                    ${categories.map(cls => `
+                        <div class="category-option" onclick="submitFeedback('${predictedClass}', '${cls}', ${confidence}); this.closest('.modal').remove();">
+                            <span class="category-emoji">${getEmoji(cls)}</span>
+                            <div style="font-size: 0.85rem;">${WASTE_INFO[cls].name}</div>
+                        </div>
+                    `).join('')}
+                </div>
+                <div style="display: flex; gap: 10px; margin-top: 20px;">
+                    <button class="btn btn-primary" onclick="submitFeedback('${predictedClass}', '${predictedClass}', ${confidence}); this.closest('.modal').remove();" style="flex: 1;">
+                        ✅ Tačno je
+                    </button>
+                    <button class="btn btn-secondary" onclick="this.closest('.modal').remove()" style="flex: 1;">
+                        ❌ Otkaži
+                    </button>
+                </div>
+            `;
+
+            createModal(modalHTML);
+        }
+
+        async function submitFeedback(predictedClass, actualClass, confidence) {
+            if (!currentFile) {
+                showToast('❌ Greška: Slika nije dostupna');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', currentFile);
+            formData.append('predicted_class', predictedClass);
+            formData.append('actual_class', actualClass);
+            formData.append('confidence', confidence.toString());
+
+            try {
+                const response = await fetch(`${API_URL}/feedback`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                const message = predictedClass === actualClass
+                    ? `✅ Hvala na potvrdi! (${data.new_samples_count}/${data.threshold})`
+                    : `✅ Hvala na ispravci! Model će naučiti. (${data.new_samples_count}/${data.threshold})`;
+
+                showToast(message);
+
+                if (data.should_retrain) {
+                    setTimeout(() => showRetrainNotification(data.new_samples_count), 3000);
+                }
+
+                updateLearningInfo();
+            } catch (error) {
+                console.error('Feedback greška:', error);
+                showToast('❌ Greška pri slanju feedbacka');
+            }
+        }
+
+        function showRetrainNotification(sampleCount) {
+            const modalHTML = `
+                <h3 style="margin: 0 0 10px 0;">🎉 Dovoljno podataka!</h3>
+                <p style="margin: 0 0 15px 0;">Prikupljeno ${sampleCount} novih slika. Želiš li retrenirati model?</p>
+                <button onclick="startRetrain(); this.closest('.modal').remove();" class="btn btn-primary" style="width: 100%; margin-bottom: 8px;">
+                    🔄 Retreniraj Sad
+                </button>
+                <button onclick="this.closest('.modal').remove()" class="btn btn-secondary" style="width: 100%;">
+                    ⏰ Kasnije
+                </button>
+            `;
+
+            createModal(modalHTML);
+        }
+
+        async function startRetrain() {
+            // Placeholder - implementiraj prema potrebi
+            showToast('🔄 Retraining funkcionalnost dolazi uskoro!');
+        }
+
+        // History
+        function addToHistory(prediction, file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                classificationHistory.unshift({
+                    image: e.target.result,
+                    prediction: prediction.name,
+                    class: prediction.class,
+                    confidence: prediction.confidence,
+                    recyclable: prediction.recyclable,
+                    timestamp: new Date()
+                });
+
+                if (classificationHistory.length > 12) {
+                    classificationHistory = classificationHistory.slice(0, 12);
+                }
+
+                localStorage.setItem('trashvision_history', JSON.stringify(classificationHistory));
+                renderHistory();
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function renderHistory() {
+            const saved = localStorage.getItem('trashvision_history');
+            if (saved) {
+                classificationHistory = JSON.parse(saved);
+            }
+
+            const grid = document.getElementById('historyGrid');
+            if (classificationHistory.length === 0) {
+                grid.innerHTML = '<p style="color: var(--text-secondary); text-align: center; grid-column: 1/-1;">Nema historije</p>';
+                return;
+            }
+
+            grid.innerHTML = classificationHistory.map(item => `
+                <div class="history-item">
+                    <img src="${item.image}" alt="${item.prediction}">
+                    <div class="history-label">${item.prediction}</div>
+                </div>
+            `).join('');
+        }
+
+        function clearHistory() {
+            if (confirm('Da li sigurno želiš obrisati historiju?')) {
+                classificationHistory = [];
+                localStorage.removeItem('trashvision_history');
+                renderHistory();
+                showToast('🗑️ Historija obrisana');
+            }
+        }
+
+        // Stats
+        function updateStats(prediction) {
+            stats.total++;
+            if (prediction.recyclable) stats.recyclable++;
+            stats.co2 = (stats.recyclable * 0.5).toFixed(1);
+
+            document.getElementById('headerTotal').textContent = stats.total;
+            document.getElementById('headerRecyclable').textContent = stats.recyclable;
+            document.getElementById('headerCO2').textContent = stats.co2 + 'kg';
+
+            localStorage.setItem('trashvision_stats', JSON.stringify(stats));
+        }
+
+        // Load saved stats
+        const savedStats = localStorage.getItem('trashvision_stats');
+        if (savedStats) {
+            stats = JSON.parse(savedStats);
+            document.getElementById('headerTotal').textContent = stats.total;
+            document.getElementById('headerRecyclable').textContent = stats.recyclable;
+            document.getElementById('headerCO2').textContent = stats.co2 + 'kg';
+        }
+
+        // Learning info
+        async function updateLearningInfo() {
+            try {
+                const response = await fetch(`${API_URL}/api/learning/stats`);
+                const data = await response.json();
+
+                const progress = data.progress_percentage.toFixed(1);
+
+                document.getElementById('learningInfo').innerHTML = `
+                    <p><strong>${data.new_samples_count}</strong> / ${data.threshold} novih uzoraka</p>
+                    <div style="background: var(--bg-main); height: 20px; border-radius: 10px; overflow: hidden; margin: 15px 0;">
+                        <div style="background: linear-gradient(90deg, var(--primary), var(--secondary)); height: 100%; width: ${progress}%; transition: width 0.3s;"></div>
+                    </div>
+                    <p style="font-size: 0.9rem; color: var(--text-secondary);">${progress}% do sljedećeg treninga</p>
+                    <p style="font-size: 0.9rem; color: var(--text-secondary); margin-top: 10px;">
+                        ${data.retrain_count} završenih treninga
+                    </p>
+                `;
+            } catch (error) {
+                console.error('Learning info error:', error);
+            }
+        }
+
+        // Analytics modal
+        function showAnalytics() {
+            if (classificationHistory.length === 0) {
+                showToast('📊 Nema dovoljno podataka za analitiku');
+                return;
+            }
+
+            // Calculate analytics
+            const categoryCount = {};
+            let totalConfidence = 0;
+            let recyclableCount = 0;
+
+            classificationHistory.forEach(item => {
+                const cls = item.class;
+                categoryCount[cls] = (categoryCount[cls] || 0) + 1;
+                totalConfidence += item.confidence;
+                if (item.recyclable) recyclableCount++;
+            });
+
+            const topCat = Object.entries(categoryCount).sort((a, b) => b[1] - a[1])[0];
+            const avgConf = (totalConfidence / classificationHistory.length * 100).toFixed(1);
+            const recyclablePercent = (recyclableCount / classificationHistory.length * 100).toFixed(0);
+
+            const modalHTML = `
+                <h2 style="margin-bottom: 20px;">📊 Analitika</h2>
+                
+                <div style="display: grid; gap: 15px;">
+                    <div class="info-item">
+                        <strong>Najčešća kategorija:</strong>
+                        ${WASTE_INFO[topCat[0]]?.name || topCat[0]} (${topCat[1]}x)
+                    </div>
+                    <div class="info-item">
+                        <strong>Prosječna pouzdanost:</strong>
+                        ${avgConf}%
+                    </div>
+                    <div class="info-item">
+                        <strong>Reciklabilno:</strong>
+                        ${recyclablePercent}% (${recyclableCount}/${classificationHistory.length})
+                    </div>
+                    <div class="info-item">
+                        <strong>CO₂ ušteda:</strong>
+                        ${stats.co2} kg
+                    </div>
+                </div>
+
+                <h3 style="margin: 20px 0 10px 0;">Distribucija kategorija:</h3>
+                <div style="display: grid; gap: 8px;">
+                    ${Object.entries(categoryCount)
+                        .sort((a, b) => b[1] - a[1])
+                        .map(([cat, count]) => {
+                            const percent = (count / classificationHistory.length * 100).toFixed(0);
+                            return `
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <span style="min-width: 100px;">${WASTE_INFO[cat]?.name || cat}</span>
+                                    <div style="flex: 1; background: var(--bg-main); height: 20px; border-radius: 10px; overflow: hidden;">
+                                        <div style="background: var(--primary); height: 100%; width: ${percent}%;"></div>
+                                    </div>
+                                    <span style="min-width: 50px; text-align: right;">${count}x (${percent}%)</span>
+                                </div>
+                            `;
+                        }).join('')}
+                </div>
+
+                <button class="btn btn-secondary" onclick="this.closest('.modal').remove()" style="width: 100%; margin-top: 20px;">
+                    Zatvori
+                </button>
+            `;
+
+            createModal(modalHTML);
+        }
+
+        // Utility functions
+        function showRandomFact() {
+            const fact = funFacts[Math.floor(Math.random() * funFacts.length)];
+            document.getElementById('funFact').textContent = fact;
+        }
+
+        function getEmoji(category) {
+            const emojis = {
+                'battery': '🔋', 'biological': '🌱', 'cardboard': '📦',
+                'clothes': '👕', 'glass': '🍾', 'metal': '🔩',
+                'paper': '📄', 'plastic': '🧴', 'shoes': '👟', 'trash': '🗑️'
+            };
+            return emojis[category] || '🗑️';
+        }
+
+        function showToast(message) {
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.textContent = message;
+            document.body.appendChild(toast);
+
+            setTimeout(() => toast.remove(), 3000);
+        }
+
+        function createModal(content) {
+            const modal = document.createElement('div');
+            modal.className = 'modal';
+            modal.style.display = 'flex';
+
+            modal.innerHTML = `<div class="modal-content">${content}</div>`;
+
+            // Close on background click
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) modal.remove();
+            });
+
+            document.body.appendChild(modal);
+            return modal;
+        }
+
+        // Initial load
+        renderHistory();
+        updateLearningInfo();
+        showRandomFact();
+
+        // Refresh periodically
+        setInterval(updateLearningInfo, 10000);
+        setInterval(showRandomFact, 30000);
+    </script>
+</body>
+
+</html>
