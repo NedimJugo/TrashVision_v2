@@ -675,4 +675,26 @@ Za pitanja i sugestije:
 
 ---
 
+## 🤖 LLM u Razvoju
+
+Ovaj projekat je razvijen uz asistenciju LLM-a kroz iterativni proces:
+
+- **💬 Diskusija ideje**: Claude AI za brainstorming, evaluaciju i izbor koncepta
+- **🏗️ Arhitektura**: Claude AI za DDD dizajn i Clean Architecture specifikaciju
+- **💻 Implementacija**: GitHub Copilot za code generation (~80% koda)
+- **🔍 Code Review**: GPT-4 i Copilot Chat za arhitekturni review i bug detection
+- **📚 Dokumentacija**: Claude AI za generisanje README, ARCHITECTURE, API docs (~95%)
+- **🔧 Refactoring**: GitHub Copilot za iterativne ispravke
+
+**Multi-LLM Workflow**:
+```
+Claude AI (Concept) → Copilot (Code) → GPT-4 (Review) → Copilot (Fix) → Repeat
+```
+
+**Detaljno**: [LLM Usage Documentation](docs/LLM_USAGE.md)
+
+**Conversation Log**: https://claude.ai/share/71369185-f519-48b4-978e-6d5c92f2f3be
+
+---
+
 **Happy Recycling! ♻️🌍**
