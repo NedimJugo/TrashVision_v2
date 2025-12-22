@@ -255,6 +255,7 @@ $RECYCLE.BIN/
 
 # Archives
 *.zip
+!trashvision_model_v1.zip  # Exception: Allow model weights archive
 *.tar.gz
 *.rar
 
