@@ -387,16 +387,15 @@ async def submit_feedback_legacy(
     confidence: float = Form(0.0)
 ):
     """
-    Stari /feedback endpoint - user feedback
+    User feedback endpoint - Clean Architecture verzija.
     
-    Za kompatibilnost sa starim frontendom.
+    Web layer je TANAK - samo prima podatke i delegira biznis logiku.
     """
     try:
         print(f"📝 Feedback received:")
         print(f"   File: {file.filename}")
         print(f"   Predicted: {predicted_class}")
         print(f"   Actual: {actual_class}")
-        print(f"   Confidence: {confidence}")
         
         # Read file
         file_data = await file.read()
@@ -408,63 +407,29 @@ async def submit_feedback_legacy(
         with open(temp_path, 'wb') as f:
             f.write(file_data)
         
-        # Determine target category
-        from ..Domain import WasteCategory as WC
-        
-        # Use actual_class if provided, otherwise predicted_class
-        target_class = actual_class or predicted_class
-        
-        if not target_class:
-            raise HTTPException(status_code=400, detail="No category provided")
-        
         try:
-            target_category = WC(target_class)
-        except ValueError:
-            raise HTTPException(status_code=400, detail=f"Invalid category: {target_class}")
-        
-        # Copy to learning dataset
-        await app_state.file_storage.copy_to_learning_set(
-            temp_path,
-            target_category.value
-        )
-        
-        print(f"✅ Added to learning dataset: {target_category.value}")
-        
-        # Cleanup temp file
-        try:
-            os.remove(temp_path)
-        except:
-            pass
-        
-        # Update counters
-        app_state.system_settings.increment_samples()
-        
-        # PERSIST u bazu!
-        from ..Infrastructure.database import SystemSettingsModel
-        temp_session = app_state.db.get_session()
-        db_settings = temp_session.query(SystemSettingsModel).first()
-        if db_settings:
-            db_settings.new_samples_count = app_state.system_settings.new_samples_count
-            temp_session.commit()
-        temp_session.close()
-        
-        should_retrain = app_state.system_settings.should_trigger_retraining()
-        
-        print(f"📊 New samples: {app_state.system_settings.new_samples_count}/{app_state.system_settings.retrain_threshold}")
-        
-        return {
-            "success": True,
-            "message": "Hvala na feedbacku!",
-            "should_retrain": should_retrain,
-            "new_samples_count": app_state.system_settings.new_samples_count,
-            "threshold": app_state.system_settings.retrain_threshold,
-            "progress_percentage": (
-                app_state.system_settings.new_samples_count / 
-                app_state.system_settings.retrain_threshold * 100
+            # DELEGIRAJ biznis logiku u Application layer (ReviewService)
+            result = await app_state.review_service.submit_user_feedback(
+                file_path=temp_path,
+                predicted_class=predicted_class,
+                actual_class=actual_class,
+                settings=app_state.system_settings
             )
-        }
+            
+            return result
+            
+        finally:
+            # Cleanup temp file
+            try:
+                os.remove(temp_path)
+            except:
+                pass
     
+    except ValueError as e:
+        # Biznis pravila error
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
+        # Ostali errori
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))

@@ -159,6 +159,83 @@ class ReviewService:
         """
         # SELECT * FROM images WHERE status = 'pending_review' LIMIT ?
         return []
+    
+    async def submit_user_feedback(
+        self,
+        file_path: str,
+        predicted_class: Optional[str],
+        actual_class: Optional[str],
+        settings: SystemSettings
+    ) -> dict:
+        """
+        Procesira user feedback i dodaje u learning dataset.
+        
+        Args:
+            file_path: Path do slike (temp file)
+            predicted_class: Agent predikcija
+            actual_class: User korekcija
+            settings: System settings za counter update
+        
+        Returns:
+            dict: Rezultat sa statistikama i retraining info
+        
+        BIZNIS LOGIKA:
+        1. Odredi target kategoriju (actual ili predicted)
+        2. Kopiraj sliku u learning dataset
+        3. Increment sample counter
+        4. Persist counter u DB
+        5. Provjeri retraining threshold
+        """
+        # 1. Odredi target kategoriju
+        target_class_str = actual_class or predicted_class
+        
+        if not target_class_str:
+            raise ValueError("No category provided")
+        
+        try:
+            target_category = WasteCategory(target_class_str)
+        except ValueError:
+            raise ValueError(f"Invalid category: {target_class_str}")
+        
+        print(f"📝 User Feedback: {target_category.value}")
+        
+        # 2. Kopiraj u learning dataset
+        await self.file_storage.copy_to_learning_set(
+            file_path,
+            target_category.value
+        )
+        
+        print(f"✅ Added to learning dataset: {target_category.value}")
+        
+        # 3. Increment counter
+        settings.increment_samples()
+        
+        # 4. Persist u DB
+        from ...Infrastructure.database import SystemSettingsModel
+        db_settings = self.db.query(SystemSettingsModel).first()
+        if db_settings:
+            db_settings.new_samples_count = settings.new_samples_count
+            self.db.commit()
+        
+        # 5. Provjeri retraining threshold
+        should_retrain = settings.should_trigger_retraining()
+        
+        print(f"📊 New samples: {settings.new_samples_count}/{settings.retrain_threshold}")
+        
+        if should_retrain:
+            print(f"🔔 RETRAINING THRESHOLD REACHED!")
+        
+        return {
+            "success": True,
+            "message": "Hvala na feedbacku!",
+            "category": target_category.value,
+            "should_retrain": should_retrain,
+            "new_samples_count": settings.new_samples_count,
+            "threshold": settings.retrain_threshold,
+            "progress_percentage": (
+                settings.new_samples_count / settings.retrain_threshold * 100
+            )
+        }
 
 
 if __name__ == "__main__":
