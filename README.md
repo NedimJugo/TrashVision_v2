@@ -142,20 +142,27 @@ pip install -r requirements.txt
 
 **Napomena**: Ako želite CPU verziju PyTorch-a, izbacite `--extra-index-url` liniju iz `requirements.txt`.
 
-### Korak 4: Model
+### Korak 4: Model Weights
 
-Preuzmite pretreniran YOLO model ili trenite svoj:
+**Model se nalazi u repozitorijumu** - ekstraktujte `trashvision_model_weights.zip`:
 
 ```bash
-# Skinite model (primer - zamijenite sa pravim linkom)
-wget https://your-model-storage.com/trashvision_v1_best.pt -O models/trashvision_v1/weights/best.pt
+# Windows (PowerShell)
+Expand-Archive -Path trashvision_model_weights.zip -DestinationPath models\trashvision_v1\ -Force
+
+# Linux/Mac
+unzip trashvision_model_weights.zip -d models/trashvision_v1/
 ```
 
-Ili koristite inicijalni YOLOv8 nano model:
-```python
-from ultralytics import YOLO
-model = YOLO('yolov8n-cls.pt')  # Classification model
+**Šta će biti ekstraktovano:**
 ```
+models/trashvision_v1/
+└── weights/
+    ├── best.pt   (2.85 MB) - Najbolji model za inference
+    └── last.pt   (2.85 MB) - Posljednji checkpoint
+```
+
+**Napomena**: Aplikacija koristi `best.pt` za klasifikaciju.
 
 ---
 

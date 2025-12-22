@@ -255,7 +255,8 @@ $RECYCLE.BIN/
 
 # Archives
 *.zip
-!trashvision_model_v1.zip  # Exception: Allow model weights archive
+!trashvision_model_v1.zip  # Exception: Old model (single best.pt)
+!trashvision_model_weights.zip  # Exception: Complete weights folder (best.pt + last.pt)
 *.tar.gz
 *.rar
 
