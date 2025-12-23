@@ -1281,6 +1281,358 @@ def sanitize_filename(filename: str) -> str:
 
 ---
 
+## 🆕 Advanced Features Architecture (NOVO!)
+
+### Cost-Aware Decision Making
+
+#### 1. Error Cost Matrix
+
+**Lokacija**: `AiAgents/TrashAgent/Domain/error_costs.py`
+
+**Arhitektura:**
+```python
+class ErrorCostMatrix:
+    """
+    10x10 matrica troškova.
+    cost_matrix[true_idx][predicted_idx] = trošak greške
+    """
+    
+    def __init__(self):
+        self.categories = [WasteCategory.BATTERY, ...]  # 10 kategorija
+        self.cost_matrix = np.ones((10, 10))
+        self._build_cost_matrix()
+    
+    def get_cost(
+        true_category: WasteCategory,
+        predicted_category: WasteCategory
+    ) -> float:
+        """Vrati trošak pojedinačne greške"""
+        
+    def get_expected_cost(
+        predicted_category: WasteCategory,
+        probability_distribution: Dict[WasteCategory, float]
+    ) -> float:
+        """Računaj očekivani trošak za odluku"""
+```
+
+**Principi:**
+- Tačna klasifikacija = 0.0
+- Blaga greška (paper→cardboard) = 0.3
+- Normalna greška = 1.0
+- Kontaminacija (metal→paper) = 3.0
+- Kritično (battery→bilo šta) = 5.0
+
+**Dependency:**
+```
+Domain/error_costs.py
+└─ numpy (matrix operations)
+```
+
+#### 2. Decision Optimizer
+
+**Lokacija**: `AiAgents/TrashAgent/Domain/decision_optimizer.py`
+
+**Arhitektura:**
+```python
+@dataclass
+class OptimizedDecision:
+    """
+    Rezultat optimizacije.
+    Sadrži: kategoriju, confidence, expected_cost, reasoning
+    """
+    predicted_category: WasteCategory
+    confidence: float
+    expected_cost: float
+    status: ImageStatus
+    reasoning: str
+    is_fallback: bool
+
+class DecisionOptimizer:
+    """
+    Optimizuje odluke korištenjem cost matrix.
+    """
+    
+    def __init__(
+        min_confidence_threshold: float = 0.70,
+        review_threshold: float = 0.50,
+        max_acceptable_cost: float = 1.0,
+        cost_weight: float = 0.3
+    ):
+        self.cost_matrix = ErrorCostMatrix()
+    
+    def optimize_decision(
+        prediction_result: Dict
+    ) -> OptimizedDecision:
+        """
+        Proces:
+        1. Provjeri confidence thresholds
+        2. Računaj expected costs za sve kategorije
+        3. Optimizuj sa weighted score
+        4. Primijeni fallback ako treba
+        """
+```
+
+**Weighted Score Formula:**
+```
+score = (1 - α) × confidence - α × expected_cost
+
+gdje je α = cost_weight (default 0.3)
+```
+
+**Decision Flow:**
+```
+┌─────────────────┐
+│ ML Prediction   │
+│ (probabilities) │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ Confidence      │
+│ Threshold Check │
+└────────┬────────┘
+         │
+    < 30%│ 30-50%│ 50-70%│ >70%
+         │        │        │
+         ▼        ▼        ▼
+    FALLBACK  REVIEW  OPTIMIZE ──┐
+    (TRASH)                       │
+                                  ▼
+                         ┌─────────────────┐
+                         │ Calculate        │
+                         │ Expected Costs   │
+                         └────────┬─────────┘
+                                  │
+                                  ▼
+                         ┌─────────────────┐
+                         │ Find Optimal     │
+                         │ (min cost)       │
+                         └────────┬─────────┘
+                                  │
+                                  ▼
+                         ┌─────────────────┐
+                         │ Return Decision  │
+                         └─────────────────┘
+```
+
+**Integration u ClassificationService:**
+```python
+class ClassificationService:
+    def __init__(
+        classifier,
+        db_session,
+        use_optimizer: bool = True  # ← NOVO!
+    ):
+        if use_optimizer:
+            self.optimizer = DecisionOptimizer()
+    
+    async def classify_image(image, settings):
+        prediction_result = await self.classifier.predict(...)
+        
+        if self.use_optimizer:
+            optimized = self.optimizer.optimize_decision(prediction_result)
+            # Koristi optimizovanu odluku
+        else:
+            # Klasični pristup (max probability)
+```
+
+#### 3. Sorting Simulation
+
+**Lokacija**: `AiAgents/TrashAgent/Infrastructure/sorting_simulation.py`
+
+**Arhitektura:**
+
+```
+┌───────────────────────────────────────────────────────┐
+│              SORTING SIMULATION                       │
+├───────────────────────────────────────────────────────┤
+│                                                       │
+│  ┌──────────────────────────────────────────┐        │
+│  │         CONVEYOR BELT                     │        │
+│  │  [item1] ──→ [item2] ──→ [item3] ──→     │        │
+│  │                                           │        │
+│  │  Zone: ───scan───── ────pickup────       │        │
+│  └──────────────────────────────────────────┘        │
+│                      ▲                                │
+│                      │                                │
+│              ┌───────┴────────┐                       │
+│              │  ROBOTIC ARM   │                       │
+│              │  (State Mach.) │                       │
+│              └───────┬────────┘                       │
+│                      │                                │
+│                      ▼                                │
+│  ┌──────────────────────────────────────────┐        │
+│  │         SORTING BINS                      │        │
+│  │  [battery] [metal] [paper] [plastic] ...  │        │
+│  └──────────────────────────────────────────┘        │
+│                                                       │
+│  ┌──────────────────────────────────────────┐        │
+│  │       COST TRACKER                        │        │
+│  │  Total: 8.50 | Avg: 0.17 | Acc: 84%      │        │
+│  └──────────────────────────────────────────┘        │
+│                                                       │
+└───────────────────────────────────────────────────────┘
+```
+
+**Komponente:**
+
+```python
+@dataclass
+class WasteItem:
+    """Item na traci"""
+    id: int
+    true_category: WasteCategory
+    position: float  # 0.0-100.0
+    predicted_category: Optional[WasteCategory]
+    confidence: float
+    sorted_into_bin: Optional[BinType]
+    sorting_cost: float
+
+class ConveyorBelt:
+    """Transportna traka"""
+    length_m: float = 10.0
+    speed_m_per_sec: float = 0.2
+    items: List[WasteItem]
+    
+    def update(delta_time: float):
+        """Pomjeri sve items naprijed"""
+
+class RoboticArm:
+    """Robotska ruka"""
+    state: RobotState  # IDLE → SCANNING → PICKING → MOVING → DROPPING
+    
+    # Timing
+    scan_time_sec: float = 0.3
+    pick_time_sec: float = 0.5
+    move_time_sec: float = 1.0
+    drop_time_sec: float = 0.3
+
+class SortingBin:
+    """Kontejner za sortiranje"""
+    bin_type: BinType
+    capacity_kg: float = 50.0
+    items: List[WasteItem]
+    contamination_count: int
+
+class SortingSimulation:
+    """Glavna simulacija"""
+    belt: ConveyorBelt
+    robot: RoboticArm
+    bins: Dict[BinType, SortingBin]
+    
+    # Statistika
+    total_items_processed: int
+    total_cost: float
+    correct_sorts: int
+    incorrect_sorts: int
+    
+    async def step(delta_time: float):
+        """Jedan korak simulacije"""
+        self.belt.update(delta_time)
+        await self._robot_step()
+```
+
+**State Machine Robota:**
+```
+    ┌──────┐
+    │ IDLE │◄──────────────────────┐
+    └───┬──┘                       │
+        │ item in scan zone        │
+        ▼                          │
+┌────────────┐                     │
+│  SCANNING  │                     │
+└─────┬──────┘                     │
+      │ scan complete              │
+      ▼                            │
+┌────────────┐                     │
+│  PICKING   │                     │
+└─────┬──────┘                     │
+      │ pick complete              │
+      ▼                            │
+┌────────────┐                     │
+│   MOVING   │                     │
+└─────┬──────┘                     │
+      │ move complete              │
+      ▼                            │
+┌────────────┐                     │
+│  DROPPING  │                     │
+└─────┬──────┘                     │
+      │ drop complete              │
+      └────────────────────────────┘
+```
+
+**Cost Calculation:**
+```python
+async def _finish_dropping(self):
+    item = self.robot.current_item
+    bin = self.robot.target_bin
+    
+    if bin == BinType.UNCERTAIN:
+        cost = 0.5  # Manual review cost
+    elif item.true_category.value == bin.value:
+        cost = 0.0  # Correct!
+    else:
+        cost = self.cost_matrix.get_cost(
+            item.true_category,
+            item.predicted_category
+        )
+    
+    self.total_cost += cost
+    self.total_items_processed += 1
+```
+
+**HTML Visualization:**
+- **Lokacija**: `app/frontend/simulation.html`
+- **Tech**: Pure JavaScript + CSS animations
+- **Features**:
+  - Animated conveyor belt
+  - Moving robotic arm
+  - Live cost tracking
+  - Contamination alerts
+  - Activity log
+
+### Data Flow - Cost-Aware Classification
+
+```
+┌─────────────┐
+│ Upload IMG  │
+└──────┬──────┘
+       │
+       ▼
+┌─────────────────┐
+│ Classification  │
+│ Agent (Sense)   │
+└──────┬──────────┘
+       │
+       ▼
+┌─────────────────────────────┐
+│ YOLO Model                  │
+│ Returns: probabilities      │
+└──────┬──────────────────────┘
+       │
+       ▼
+┌─────────────────────────────┐
+│ Decision Optimizer (Think)  │
+│                             │
+│ 1. Check thresholds         │
+│ 2. Calculate expected costs │
+│ 3. Find optimal decision    │
+│ 4. Apply fallback if needed │
+└──────┬──────────────────────┘
+       │
+       ▼
+┌─────────────────────────────┐
+│ Classification Service      │
+│ (Act)                       │
+│                             │
+│ - Save prediction           │
+│ - Update image status       │
+│ - Log decision reasoning    │
+└─────────────────────────────┘
+```
+
+---
+
 ## 🚀 Future Improvements
 
 ### Short-term (1-3 mjeseca)

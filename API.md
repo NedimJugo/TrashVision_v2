@@ -905,6 +905,158 @@ while True:
 
 ---
 
+## 🆕 Advanced API Features (NOVO!)
+
+### Cost-Aware Classification
+
+Nema poseban endpoint - **automatski integrisano** u postojeće endpointe!
+
+Kada je `use_optimizer=True` u `ClassificationService`, svi `/api/images/upload` i `/predict` endpointi automatski koriste cost-aware decision making.
+
+**Interna logika:**
+```python
+# Umjesto:
+decision = max(probabilities)  # Klasični pristup
+
+# Sad:
+decision = DecisionOptimizer.optimize_decision(probabilities)
+# ↑ Uzima u obzir error cost matrix!
+```
+
+**Response isti**, ali odluka je pametnija:
+```json
+{
+  "predicted_class": "metal",
+  "confidence": 0.55,
+  "_cost_reasoning": "Expected cost: 0.45 (optimized vs paper: 1.65)",
+  "_is_fallback": false
+}
+```
+
+### Error Cost Matrix Query
+
+**Endpoint**: `GET /api/cost-matrix`
+
+Query error cost matrix.
+
+**cURL Example:**
+```bash
+curl "http://localhost:8000/api/cost-matrix"
+```
+
+**Response** (200 OK):
+```json
+{
+  "matrix": {
+    "metal_to_paper": 3.0,
+    "paper_to_metal": 1.0,
+    "battery_to_plastic": 5.0,
+    "paper_to_cardboard": 0.3
+  },
+  "legend": {
+    "0.0": "Correct classification",
+    "0.3-1.0": "Minor/normal error",
+    "2.0-3.0": "High cost (contamination)",
+    "5.0": "CRITICAL (hazard)"
+  }
+}
+```
+
+**Specific Cost Query:**
+
+**Endpoint**: `GET /api/cost-matrix/{true_category}/{predicted_category}`
+
+```bash
+curl "http://localhost:8000/api/cost-matrix/metal/paper"
+```
+
+**Response**:
+```json
+{
+  "true_category": "metal",
+  "predicted_category": "paper",
+  "cost": 3.0,
+  "severity": "HIGH",
+  "reason": "Metal contaminates paper recycling stream"
+}
+```
+
+### Simulation Status
+
+**Endpoint**: `GET /api/simulation/status`
+
+Get current simulation state (ako je simulation pokrenut).
+
+**Response**:
+```json
+{
+  "is_running": true,
+  "simulation_time_sec": 45.2,
+  "total_processed": 15,
+  "correct_sorts": 12,
+  "incorrect_sorts": 2,
+  "uncertain_sorts": 1,
+  "accuracy_percent": 80.0,
+  "total_cost": 3.50,
+  "average_cost_per_item": 0.23,
+  "items_on_belt": 5,
+  "robot_state": "picking",
+  "bins": {
+    "plastic": {"items": 5, "weight_kg": 2.5, "contamination": 0},
+    "metal": {"items": 4, "weight_kg": 4.8, "contamination": 1},
+    "paper": {"items": 3, "weight_kg": 0.9, "contamination": 0}
+  }
+}
+```
+
+### Decision Explanation
+
+**Endpoint**: `POST /api/explain-decision`
+
+Explain why a specific decision was made.
+
+**Request:**
+```json
+{
+  "probabilities": {
+    "metal": 0.55,
+    "paper": 0.40,
+    "glass": 0.05
+  }
+}
+```
+
+**Response:**
+```json
+{
+  "classic_decision": {
+    "category": "metal",
+    "confidence": 0.55,
+    "reasoning": "Highest probability"
+  },
+  "cost_aware_decision": {
+    "category": "metal",
+    "confidence": 0.55,
+    "expected_cost": 0.45,
+    "reasoning": "Minimizes expected cost",
+    "alternatives": {
+      "paper": {
+        "expected_cost": 1.65,
+        "reasoning": "High cost if true category is metal (3.0)"
+      },
+      "glass": {
+        "expected_cost": 0.95,
+        "reasoning": "Low probability makes this risky"
+      }
+    }
+  },
+  "recommendation": "metal",
+  "cost_savings": "59% lower cost vs worst case"
+}
+```
+
+---
+
 ## 📞 Podrška
 
 Za probleme sa API-jem:
@@ -916,18 +1068,28 @@ Za probleme sa API-jem:
 
 ## 📜 Changelog
 
-### Version 2.0.0 (Current)
+### Version 2.1.0 (Current) - ADVANCED FEATURES
+- ✅ **Cost-Aware Decision Making** - Optimizer integrisano u classification
+- ✅ **Error Cost Matrix** - 10x10 matrica troškova greške
+- ✅ **Decision Optimizer** - Expected cost minimization
+- ✅ **Confidence Thresholds** - 3 nivoa sa fallback strategijama
+- ✅ **Sorting Simulation** - Robotic sorting sa cost tracking
+- ✅ Novi `/api/cost-matrix` endpointi
+- ✅ `/api/simulation/status` za simulation monitoring
+- ✅ `/api/explain-decision` za decision reasoning
+
+### Version 2.0.0 (Legacy)
 - ✅ Novi `/api/images/upload` sa queue sistemom
 - ✅ Agent-based processing
 - ✅ `/api/learning/stats` endpoint
 - ✅ `/status` system health check
 
-### Version 1.0.0 (Legacy)
+### Version 1.0.0
 - ✅ `/predict` direktna predikcija
 - ✅ `/feedback` korisnički feedback
 
 ---
 
 **Autor**: Nedim  
-**Verzija**: 2.0.0  
+**Verzija**: 2.1.0  
 **Datum**: 2025-12-23

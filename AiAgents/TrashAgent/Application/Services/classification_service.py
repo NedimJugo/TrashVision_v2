@@ -3,6 +3,8 @@ Classification Service
 
 Servis za klasifikaciju slika i donošenje odluka.
 Agent koristi ovo u THINK i ACT fazama.
+
+NOVO: Koristi DecisionOptimizer za cost-aware decisions!
 """
 
 from typing import Optional
@@ -15,6 +17,7 @@ from ...Domain import (
     ClassificationDecision,
     SystemSettings,
 )
+from ...Domain.decision_optimizer import DecisionOptimizer, OptimizedDecision
 
 
 class ClassificationService:
@@ -25,16 +28,28 @@ class ClassificationService:
     - Klasifikaciju slike preko ML modela
     - Donošenje odluke (da li ide na review)
     - Čuvanje predikcije u DB
+    - Cost-aware decision optimization
     """
     
-    def __init__(self, classifier, db_session):
+    def __init__(self, classifier, db_session, use_optimizer: bool = True):
         """
         Args:
             classifier: ML classifier (IWasteClassifier interface)
             db_session: SQLAlchemy session
+            use_optimizer: Da li koristiti decision optimizer (default: True)
         """
         self.classifier = classifier
         self.db = db_session
+        self.use_optimizer = use_optimizer
+        
+        # Kreiraj decision optimizer
+        if use_optimizer:
+            self.optimizer = DecisionOptimizer(
+                min_confidence_threshold=0.70,
+                review_threshold=0.50,
+                max_acceptable_cost=1.5,
+                cost_weight=0.3
+            )
     
     async def classify_image(
         self,
@@ -53,39 +68,63 @@ class ClassificationService:
         
         THINK faza:
         1. Klasifikuj sliku preko ML modela
-        2. Primijeni policy (confidence threshold)
+        2. Primijeni policy (confidence threshold + cost optimization)
         3. Vrati odluku
         """
         # 1. KLASIFIKACIJA
         prediction_result = await self.classifier.predict(image.filepath)
         
-        # 2. POLICY - Odluči o statusu
-        confidence = prediction_result["confidence"]
-        predicted_category = WasteCategory(prediction_result["class"])
+        # 2. OPTIMIZACIJA (ako je uključena)
+        if self.use_optimizer:
+            optimized = self.optimizer.optimize_decision(prediction_result)
+            
+            # Konvertuj u ClassificationDecision
+            decision = ClassificationDecision(
+                predicted_category=optimized.predicted_category,
+                confidence=optimized.confidence,
+                new_status=optimized.status,
+                top3_predictions=optimized.top3_predictions
+            )
+            
+            print(f"🎯 OPTIMIZED Classification: {optimized.predicted_category.value} ({optimized.confidence:.2%})")
+            print(f"   Expected Cost: {optimized.expected_cost:.2f}")
+            print(f"   Status: {optimized.status.value}")
+            print(f"   Reasoning: {optimized.reasoning}")
+            
+            if optimized.is_fallback:
+                print(f"   ⚠️ Fallback: {optimized.fallback_reason}")
+            
+            if optimized.original_top1 != optimized.predicted_category:
+                print(f"   🔄 Changed: {optimized.original_top1.value} → {optimized.predicted_category.value}")
         
-        # Pravilo: Ako confidence < 70% → ide na review
-        if confidence < settings.min_confidence_threshold:
-            new_status = ImageStatus.PENDING_REVIEW
         else:
-            new_status = ImageStatus.CLASSIFIED
-        
-        # 3. Top 3 predictions
-        top3 = prediction_result.get("top3", [])
-        top3_predictions = [
-            (WasteCategory(cls), conf)
-            for cls, conf in top3
-        ]
-        
-        # 4. Kreiraj odluku
-        decision = ClassificationDecision(
-            predicted_category=predicted_category,
-            confidence=confidence,
-            new_status=new_status,
-            top3_predictions=top3_predictions
-        )
-        
-        print(f"🔮 Classification: {predicted_category.value} ({confidence:.2%})")
-        print(f"   Status: {new_status.value}")
+            # 2. LEGACY POLICY - Jednostavno odluči o statusu
+            confidence = prediction_result["confidence"]
+            predicted_category = WasteCategory(prediction_result["class"])
+            
+            # Pravilo: Ako confidence < 70% → ide na review
+            if confidence < settings.min_confidence_threshold:
+                new_status = ImageStatus.PENDING_REVIEW
+            else:
+                new_status = ImageStatus.CLASSIFIED
+            
+            # 3. Top 3 predictions
+            top3 = prediction_result.get("top3", [])
+            top3_predictions = [
+                (WasteCategory(cls), conf)
+                for cls, conf in top3
+            ]
+            
+            # 4. Kreiraj odluku
+            decision = ClassificationDecision(
+                predicted_category=predicted_category,
+                confidence=confidence,
+                new_status=new_status,
+                top3_predictions=top3_predictions
+            )
+            
+            print(f"🔮 Classification: {predicted_category.value} ({confidence:.2%})")
+            print(f"   Status: {new_status.value}")
         
         return decision
     
