@@ -218,6 +218,13 @@ class SystemSettings:
             self.new_samples_count >= self.retrain_threshold
         )
     
+    @property
+    def progress_percentage(self) -> float:
+        """Progress prema retraining threshold-u (0-100%)"""
+        if self.retrain_threshold <= 0:
+            return 0.0
+        return (self.new_samples_count / self.retrain_threshold) * 100
+    
     def reset_samples_counter(self):
         """Reset nakon retraining-a"""
         self.new_samples_count = 0

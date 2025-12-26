@@ -289,12 +289,11 @@ async def get_image_status(image_id: int):
 async def get_learning_stats():
     """Statistika learning-a"""
     settings = app_state.system_settings
-    progress = (settings.new_samples_count / settings.retrain_threshold * 100) if settings.retrain_threshold > 0 else 0
     
     return {
         "new_samples_count": settings.new_samples_count,
         "threshold": settings.retrain_threshold,
-        "progress_percentage": progress,
+        "progress_percentage": settings.progress_percentage,  # ✅ Koristimo Domain property
         "auto_retrain_enabled": settings.auto_retrain_enabled,
         "last_retrain_at": settings.last_retrain_at.isoformat() if settings.last_retrain_at else None,
         "retrain_count": settings.retrain_count,
@@ -318,14 +317,41 @@ async def system_status():
 # ========================================
 # LEGACY ENDPOINTS (za kompatibilnost sa starim frontendom)
 # ========================================
+# 
+# ⚠️ NAPOMENA: Ovi endpointi NE koriste agent arhitekturu!
+# 
+# Legacy endpointi rade DIREKTNU sinhronu predikciju bez:
+#   - Agent queue-a (Sense→Think→Act ciklus)
+#   - Background processing
+#   - Autonomnog ponašanja
+# 
+# NOVA arhitektura koristi:
+#   POST /api/images/upload → stavlja u queue → Classification Agent procesira
+# 
+# Ovi endpointi su zadržani samo za:
+#   - Backwards compatibility sa starim frontendom
+#   - Demo svrhe (brza predikcija bez čekanja)
+#   - Testiranje ML modela direktno
+# ========================================
 
 @app.post("/predict")
 async def predict_legacy(file: UploadFile = File(...)):
     """
-    Stari /predict endpoint - direktna predikcija (BEZ agent queue-a)
+    [LEGACY] Direktna sinhorna predikcija - NE KORISTI AGENT ARHITEKTURU!
     
-    Ovo je za kompatibilnost sa starim frontendom.
-    NOVA arhitektura koristi /api/images/upload + agent background processing.
+    ⚠️ Ovo je legacy endpoint za kompatibilnost sa starim frontendom.
+    ⚠️ NE IDE kroz agent queue - radi direktnu ML predikciju.
+    
+    Za PRAVU agent arhitekturu koristi:
+        1. POST /api/images/upload (stavlja u queue)
+        2. Classification Agent procesira u background-u
+        3. GET /api/images/{id} (provjeri status)
+    
+    Args:
+        file: Slika za klasifikaciju (JPEG, PNG, WebP)
+    
+    Returns:
+        Direktan rezultat predikcije (legacy format)
     """
     try:
         if not file.content_type.startswith('image/'):
@@ -338,7 +364,7 @@ async def predict_legacy(file: UploadFile = File(...)):
         temp_path = f"temp_{file.filename}"
         img.save(temp_path)
         
-        # DIREKTNA predikcija (ne ide kroz agent queue)
+        # ⚠️ DIREKTNA predikcija - zaobilazi agent arhitekturu!
         result = await app_state.classifier.predict(temp_path)
         
         # Cleanup
@@ -387,9 +413,19 @@ async def submit_feedback_legacy(
     confidence: float = Form(0.0)
 ):
     """
-    User feedback endpoint - Clean Architecture verzija.
+    [LEGACY] User feedback endpoint - koristi se i u novoj arhitekturi.
     
-    Web layer je TANAK - samo prima podatke i delegira biznis logiku.
+    ✅ Ovo JE dio agent arhitekture - feedback ide u learning dataset.
+    ✅ Web layer je TANAK - samo prima podatke i delegira na ReviewService.
+    
+    Args:
+        file: Slika koju korisnik koriguje
+        predicted_class: Šta je model predvidio
+        actual_class: Ispravna kategorija (gold label)
+        confidence: Confidence predikcije
+    
+    Returns:
+        Status i poruka o uspješnom dodavanju u learning set
     """
     try:
         print(f"📝 Feedback received:")
